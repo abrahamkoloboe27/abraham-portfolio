@@ -252,8 +252,32 @@ docker compose -f docker-compose.prod.yml exec api alembic downgrade -1
 
 | Symptôme | Cause probable |
 | --- | --- |
+| `failed to resolve host '…@…'` | le mot de passe de la base contient un caractère spécial non encodé — voir ci-dessous |
 | `503` sur `/api/v1/site` | la base est vide — lancez le seed |
 | Erreur CORS dans le navigateur | `PUBLIC_SITE_URL` / `ADMIN_SITE_URL` ne correspondent pas aux domaines réels |
 | Le site affiche « API injoignable » | conteneur `api` arrêté ou `DATABASE_URL` invalide |
 | Images non affichées | `S3_PUBLIC_BASE_URL` incorrect ou bucket non public |
 | Le certificat TLS n'est pas émis | DNS non propagé, ou ports 80/443 fermés |
+
+### Mot de passe contenant un caractère spécial
+
+libpq découpe les identifiants au **premier** `@`. Un mot de passe qui en
+contient un pousse donc le reste dans le nom d'hôte, et l'erreur ne se manifeste
+que bien plus tard, sous une forme trompeuse :
+
+```
+failed to resolve host 'Suffixe@aws-0-eu-central-1.pooler.supabase.com'
+```
+
+L'application refuse désormais une URL ambiguë au démarrage, avec le remède.
+Pour construire l'URL correcte sans exposer le mot de passe dans l'historique :
+
+```bash
+python3 -c "import urllib.parse,getpass;p=getpass.getpass('Mot de passe: ');print(urllib.parse.quote(p,safe=''))"
+```
+
+Caractères à encoder : `@` → `%40`, `:` → `%3A`, `/` → `%2F`, `#` → `%23`,
+`?` → `%3F`, `%` → `%25`.
+
+Plus simple encore : régénérez un mot de passe long et alphanumérique depuis
+*Project Settings → Database → Reset database password*.
