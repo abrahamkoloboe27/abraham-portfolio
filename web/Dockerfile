@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7
 # ------------------------------------------------------------------- deps
-FROM node:22-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
 # ------------------------------------------------------------------ build
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 # Next.js inlines NEXT_PUBLIC_* at build time, so they must be present here.
@@ -23,7 +23,7 @@ COPY . .
 RUN npm run build
 
 # ---------------------------------------------------------------- runtime
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production \
