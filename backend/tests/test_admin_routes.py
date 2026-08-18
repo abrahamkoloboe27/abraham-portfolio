@@ -323,3 +323,34 @@ async def test_audit_log_requires_admin(client: AsyncClient, editor: User, owner
     assert response.status_code == 200
     # The two logins above are themselves auditable events.
     assert response.json()["total"] >= 1
+
+
+# ------------------------------------------------------- configuration guard
+def test_database_url_rejects_unencoded_password_at_sign():
+    """libpq splits credentials at the first `@`, so an unencoded one in the
+    password lands in the hostname and only fails much later as a DNS error."""
+    import pytest
+    from pydantic import ValidationError
+
+    from app.core.config import Settings
+
+    with pytest.raises(ValidationError, match="non encodé"):
+        Settings(
+            DATABASE_URL=(
+                "postgresql://postgres.abc:Pass@Suffix"
+                "@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
+            )
+        )
+
+
+def test_database_url_accepts_encoded_password():
+    from app.core.config import Settings
+
+    settings = Settings(
+        DATABASE_URL=(
+            "postgresql://postgres.abc:Pass%40Suffix"
+            "@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
+        )
+    )
+    assert settings.DATABASE_URL.startswith("postgresql+asyncpg://")
+    assert "Pass%40Suffix" in settings.DATABASE_URL

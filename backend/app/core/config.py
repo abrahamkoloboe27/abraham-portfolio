@@ -105,6 +105,29 @@ class Settings(BaseSettings):
 
     @field_validator("DATABASE_URL")
     @classmethod
+    def _reject_ambiguous_credentials(cls, v: str) -> str:
+        """Catch an unencoded special character in the password.
+
+        libpq splits the credentials at the *first* `@`, so a password
+        containing one pushes the remainder into the hostname — surfacing much
+        later as a baffling `failed to resolve host '…@…'` DNS error. Failing
+        here, with the actual remedy, saves a long debugging detour.
+        """
+        _, separator, rest = v.partition("://")
+        if not separator:
+            return v
+        netloc = rest.split("/", 1)[0]
+        if netloc.count("@") > 1:
+            raise ValueError(
+                "DATABASE_URL ambigu : le mot de passe contient un « @ » non encodé. "
+                "Encodez-le en %40 (et : / # ? % en %3A %2F %23 %3F %25), par exemple "
+                "avec urllib.parse.quote(mot_de_passe, safe=''), ou régénérez un mot de "
+                "passe sans caractère spécial."
+            )
+        return v
+
+    @field_validator("DATABASE_URL")
+    @classmethod
     def _force_async_driver(cls, v: str) -> str:
         """Accept the plain `postgres(ql)://` DSN copied from Supabase/Neon."""
         if v.startswith("postgres://"):
