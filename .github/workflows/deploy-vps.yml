@@ -63,7 +63,7 @@ jobs:
 
       - name: Tirer les images et redémarrer
         if: steps.guard.outputs.configured == 'true'
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         env:
           TAG: ${{ inputs.tag || 'latest' }}
         with:
@@ -90,7 +90,7 @@ jobs:
 
       - name: Vérifier la santé des services
         if: steps.guard.outputs.configured == 'true'
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
