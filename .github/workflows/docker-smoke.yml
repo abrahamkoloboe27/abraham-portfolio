@@ -1,0 +1,82 @@
+name: Docker smoke test
+
+# Construit la stack complète et vérifie qu'elle démarre réellement :
+# migrations appliquées, seed injecté, API et site répondant.
+
+on:
+  pull_request:
+    paths:
+      - "**/Dockerfile"
+      - "docker-compose*.yml"
+      - "backend/**"
+      - ".github/workflows/docker-smoke.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: docker-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Démarrage de la stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurer Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Démarrer la stack
+        run: |
+          cp .env.example .env
+          docker compose up -d --build db storage storage-init api
+
+      - name: Attendre que l'API soit prête
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8000/health > /dev/null 2>&1; then
+              echo "API prête après ${i}s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::L'API n'a pas démarré à temps"
+          docker compose logs api
+          exit 1
+
+      - name: Vérifier les endpoints publics
+        run: |
+          set -euo pipefail
+          curl -fsS http://localhost:8000/health | tee /dev/stderr | grep -q '"status":"ok"'
+          curl -fsS http://localhost:8000/api/v1/site > /tmp/site.json
+          python -c "
+          import json, sys
+          data = json.load(open('/tmp/site.json'))
+          assert data['settings']['full_name'], 'paramètres du site vides'
+          assert len(data['experiences']) >= 3, 'expériences manquantes'
+          assert len(data['sections']) >= 10, 'sections manquantes'
+          print('Bundle du site vérifié :', len(data['featured_projects']), 'projets à la une')
+          "
+          curl -fsS "http://localhost:8000/api/v1/projects?per_page=3" | grep -q '"total"'
+          curl -fsS http://localhost:8000/api/v1/sitemap.xml | grep -q '<urlset'
+
+      - name: Vérifier l'authentification admin
+        run: |
+          set -euo pipefail
+          TOKEN=$(curl -fsS -X POST http://localhost:8000/api/v1/admin/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"abklb27@gmail.com","password":"ChangeMe!2026"}' \
+            | python -c "import json,sys; print(json.load(sys.stdin)['access_token'])")
+          curl -fsS -H "Authorization: Bearer $TOKEN" \
+            http://localhost:8000/api/v1/admin/dashboard/stats | grep -q '"projects_total"'
+          echo "Authentification et tableau de bord vérifiés."
+
+      - name: Afficher les logs en cas d'échec
+        if: failure()
+        run: docker compose logs --tail=120
+
+      - name: Arrêter la stack
+        if: always()
+        run: docker compose down -v

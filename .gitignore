@@ -1,0 +1,50 @@
+# ------------------------------------------------------------------ secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ------------------------------------------------------------------- python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.sqlite
+*.db
+
+# --------------------------------------------------------------------- node
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ------------------------------------------------------------------ uploads
+backend/uploads/
+uploads/
+
+# --------------------------------------------------------------------- ides
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --------------------------------------------------------------------- divers
+.DS_Store
+Thumbs.db
+*.log
+.cache/
+.turbo/

@@ -1,0 +1,20 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+tests/
+uploads/
+.env
+.env.*
+!.env.example
+*.sqlite
+*.db
+.git/
+.github/
+# README.md is intentionally NOT ignored: hatchling reads it for package metadata.

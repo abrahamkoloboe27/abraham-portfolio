@@ -1,0 +1,83 @@
+# Caddy obtient et renouvelle les certificats TLS automatiquement (Let's Encrypt).
+
+{
+	email {$ACME_EMAIL}
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+# ------------------------------------------------------------- site public
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Les flux canoniques sont produits par l'API.
+	handle /rss.xml {
+		rewrite * /api/v1/rss.xml
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	log {
+		output file /data/logs/web.log
+		format json
+	}
+}
+
+# ----------------------------------------------------------- console admin
+{$ADMIN_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Robots-Tag "noindex, nofollow"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	reverse_proxy admin:80
+
+	log {
+		output file /data/logs/admin.log
+		format json
+	}
+}
+
+# --------------------------------------------------------------------- API
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	# Documentation interactive réservée : décommentez pour la protéger par IP.
+	# @docs path /docs* /redoc* /openapi.json
+	# handle @docs {
+	# 	@blocked not remote_ip 1.2.3.4
+	# 	respond @blocked 403
+	# 	reverse_proxy api:8000
+	# }
+
+	reverse_proxy api:8000
+
+	log {
+		output file /data/logs/api.log
+		format json
+	}
+}

@@ -1,0 +1,35 @@
+{
+  "name": "abraham-portfolio-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Site public du portfolio d'Abraham Zacharie KOLOBOE",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.456.0",
+    "next": "^16.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^9.0.1",
+    "rehype-highlight": "^7.0.1",
+    "remark-gfm": "^4.0.0",
+    "tailwind-merge": "^2.5.4"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.9.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.15.0",
+    "eslint-config-next": "^16.3.1",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.6.3"
+  }
+}

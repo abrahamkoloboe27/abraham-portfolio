@@ -1,0 +1,68 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "admin/**"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - "admin/**"
+      - ".github/workflows/frontend-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.app.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - { name: Site public, dir: web }
+          - { name: Console admin, dir: admin }
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.app.dir }}
+
+    env:
+      # Valeurs factices : la CI vérifie la compilation, pas une API réelle.
+      NEXT_PUBLIC_API_URL: https://api.example.com
+      NEXT_PUBLIC_SITE_URL: https://example.com
+      VITE_API_URL: https://api.example.com
+      VITE_SITE_URL: https://example.com
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.app.dir }}/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérification des types
+        run: npm run typecheck
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Build de production
+        run: npm run build
+
+      - name: Audit des dépendances
+        run: npm audit --audit-level=high
+        continue-on-error: true

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="light dark" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563eb'/><text y='68' x='50' text-anchor='middle' font-size='52' font-family='system-ui' font-weight='700' fill='white'>AK</text></svg>"
+    />
+    <title>Administration — Abraham Z. KOLOBOE</title>
+    <script>
+      // Apply the stored theme before first paint.
+      try {
+        var mode = localStorage.getItem("admin-theme") || "system";
+        var dark =
+          mode === "dark" ||
+          (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (dark) document.documentElement.classList.add("dark");
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

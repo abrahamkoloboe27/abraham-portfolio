@@ -1,0 +1,102 @@
+name: Build & publish images
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag supplémentaire à publier"
+        required: false
+        default: ""
+
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    name: ${{ matrix.service.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - { name: api, context: backend }
+          - { name: web, context: web }
+          - { name: admin, context: admin }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurer Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Authentification GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Métadonnées de l'image
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.service.name }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=short
+            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
+          labels: |
+            org.opencontainers.image.title=Portfolio Abraham KOLOBOE — ${{ matrix.service.name }}
+            org.opencontainers.image.vendor=Abraham Zacharie KOLOBOE
+
+      - name: Construire et publier
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service.context }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service.name }}
+          platforms: linux/amd64
+          # Les frontends inlinent ces valeurs au build : elles doivent pointer
+          # vers les domaines de production.
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.API_PUBLIC_URL }}
+            NEXT_PUBLIC_SITE_URL=${{ vars.PUBLIC_SITE_URL }}
+            VITE_API_URL=${{ vars.API_PUBLIC_URL }}
+            VITE_SITE_URL=${{ vars.PUBLIC_SITE_URL }}
+
+  summary:
+    name: Récapitulatif
+    runs-on: ubuntu-latest
+    needs: build
+    if: always()
+    steps:
+      - name: Écrire le résumé
+        run: |
+          {
+            echo "### Images publiées"
+            echo ""
+            for service in api web admin; do
+              echo "- \`ghcr.io/${{ github.repository }}-$service:latest\`"
+            done
+            echo ""
+            echo "Déploiement : \`make prod-pull\` sur le serveur, ou le workflow **Deploy — VPS**."
+          } >> "$GITHUB_STEP_SUMMARY"

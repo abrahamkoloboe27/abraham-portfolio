@@ -1,0 +1,96 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  quality:
+    name: Lint & tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: portfolio
+          POSTGRES_PASSWORD: portfolio
+          POSTGRES_DB: portfolio_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U portfolio"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      SECRET_KEY: ci-secret-key-not-used-in-production-0123456789
+      ENVIRONMENT: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/pyproject.toml
+
+      - name: Installer Python 3.12
+        run: uv python install 3.12
+
+      - name: Installer les dépendances
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
+
+      - name: Ruff — analyse statique
+        run: .venv/bin/ruff check . --output-format=github
+
+      - name: Ruff — formatage
+        run: .venv/bin/ruff format --check .
+
+      - name: Tests unitaires (SQLite en mémoire)
+        run: .venv/bin/pytest --cov=app --cov-report=term-missing --cov-report=xml
+
+      - name: Vérifier les migrations sur PostgreSQL
+        env:
+          DATABASE_URL: postgresql+asyncpg://portfolio:portfolio@localhost:5432/portfolio_test
+        run: |
+          .venv/bin/alembic upgrade head
+          # `check` échoue si un modèle a changé sans migration correspondante.
+          .venv/bin/alembic check
+
+      - name: Vérifier le seed de bout en bout
+        env:
+          DATABASE_URL: postgresql+asyncpg://portfolio:portfolio@localhost:5432/portfolio_test
+        run: |
+          .venv/bin/python -m app.db.seed
+          # Rejoué immédiatement : le seed doit être idempotent.
+          .venv/bin/python -m app.db.seed
+
+      - name: Publier la couverture
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          retention-days: 7

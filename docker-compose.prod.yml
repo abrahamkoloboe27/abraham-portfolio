@@ -1,0 +1,93 @@
+# Déploiement auto-hébergé (VPS) : Caddy termine le TLS et route vers les 3 services.
+#
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# La base de données est externe (Supabase / Neon) — renseignez DATABASE_URL.
+# Les images sont tirées de GHCR et publiées par le workflow `docker-publish.yml`.
+
+name: abraham-portfolio-prod
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN est requis}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:?ADMIN_DOMAIN est requis}
+      API_DOMAIN: ${API_DOMAIN:?API_DOMAIN est requis}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL est requis}
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+      - admin
+    logging: *default-logging
+
+  api:
+    image: ${REGISTRY:-ghcr.io/abrahamkoloboe27/abraham-portfolio}-api:${TAG:-latest}
+    restart: always
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+      LOG_LEVEL: INFO
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL est requis}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY est requis}
+      PUBLIC_SITE_URL: https://${DOMAIN}
+      ADMIN_SITE_URL: https://${ADMIN_DOMAIN}
+      API_PUBLIC_URL: https://${API_DOMAIN}
+      CORS_ORIGINS: https://${DOMAIN},https://${ADMIN_DOMAIN}
+      FIRST_SUPERUSER_EMAIL: ${FIRST_SUPERUSER_EMAIL}
+      FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-s3}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      S3_REGION: ${S3_REGION:-eu-west-3}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      EMAILS_FROM_EMAIL: ${EMAILS_FROM_EMAIL}
+      CONTACT_NOTIFY_EMAIL: ${CONTACT_NOTIFY_EMAIL}
+      RUN_MIGRATIONS: "true"
+      # Le seed n'écrase rien (upsert), mais reste désactivé par défaut en prod.
+      RUN_SEED: "${RUN_SEED:-false}"
+    volumes:
+      - api_uploads:/app/uploads
+    logging: *default-logging
+
+  web:
+    image: ${REGISTRY:-ghcr.io/abrahamkoloboe27/abraham-portfolio}-web:${TAG:-latest}
+    restart: always
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - api
+    logging: *default-logging
+
+  admin:
+    image: ${REGISTRY:-ghcr.io/abrahamkoloboe27/abraham-portfolio}-admin:${TAG:-latest}
+    restart: always
+    depends_on:
+      - api
+    logging: *default-logging
+
+volumes:
+  caddy_data:
+  caddy_config:
+  api_uploads:

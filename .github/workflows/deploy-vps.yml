@@ -1,0 +1,105 @@
+name: Deploy — VPS (Docker Compose)
+
+# Déploiement auto-hébergé : tire les images GHCR fraîchement publiées et
+# redémarre la stack derrière Caddy.
+#
+# Secrets requis :
+#   VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_PORT (optionnel, défaut 22)
+#   VPS_APP_DIR (optionnel, défaut ~/abraham-portfolio)
+
+on:
+  workflow_run:
+    workflows: ["Build & publish images"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag d'image à déployer"
+        required: false
+        default: latest
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Déployer sur le VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+
+    # Ne déploie que si la construction des images a réussi.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Vérifier la configuration
+        id: guard
+        run: |
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then
+            echo "::warning::VPS_HOST absent — déploiement VPS ignoré."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.guard.outputs.configured == 'true'
+
+      - name: Copier les fichiers d'infrastructure
+        if: steps.guard.outputs.configured == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          source: "docker-compose.prod.yml,infra/caddy/Caddyfile,Makefile"
+          target: ${{ secrets.VPS_APP_DIR || '~/abraham-portfolio' }}
+          overwrite: true
+
+      - name: Tirer les images et redémarrer
+        if: steps.guard.outputs.configured == 'true'
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          TAG: ${{ inputs.tag || 'latest' }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          envs: TAG
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.VPS_APP_DIR || '~/abraham-portfolio' }}"
+
+            echo "→ Connexion au registre GHCR"
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+            echo "→ Récupération des images (TAG=$TAG)"
+            TAG="$TAG" docker compose -f docker-compose.prod.yml pull
+
+            echo "→ Redémarrage de la stack"
+            TAG="$TAG" docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            echo "→ Nettoyage des images orphelines"
+            docker image prune -f
+
+      - name: Vérifier la santé des services
+        if: steps.guard.outputs.configured == 'true'
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.VPS_APP_DIR || '~/abraham-portfolio' }}"
+            sleep 15
+            docker compose -f docker-compose.prod.yml ps
+            docker compose -f docker-compose.prod.yml exec -T api curl -fsS http://localhost:8000/health
+            echo "Déploiement vérifié."
