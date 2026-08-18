@@ -15,7 +15,7 @@ COPY . .
 RUN npm run build
 
 # ---------------------------------------------------------------- runtime
-FROM nginx:1.27-alpine AS runner
+FROM nginx:1.31-alpine AS runner
 
 RUN apk add --no-cache curl
 COPY --from=builder /app/dist /usr/share/nginx/html
