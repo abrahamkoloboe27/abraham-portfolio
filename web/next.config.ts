@@ -10,7 +10,8 @@ const apiOrigin = (() => {
 
 const nextConfig: NextConfig = {
   // `standalone` produces a self-contained server bundle for the Docker image.
-  output: "standalone",
+  // On Vercel the platform supplies its own adapter, so the option is dropped.
+  output: process.env.VERCEL ? undefined : "standalone",
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,

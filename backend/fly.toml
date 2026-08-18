@@ -1,0 +1,40 @@
+# Déploiement Fly.io de l'API.
+#
+#   fly launch --no-deploy --copy-config     # crée l'app à partir de ce fichier
+#   fly secrets set DATABASE_URL="…" SECRET_KEY="…"
+#   fly deploy
+#
+# `app` doit être unique sur Fly : renommez-la si le nom est déjà pris.
+
+app = "abraham-portfolio-api"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ENVIRONMENT = "production"
+  PORT = "8000"
+  RUN_MIGRATIONS = "true"
+  # Le seed est idempotent, mais reste explicite : lancez-le une fois via
+  # `fly ssh console -C "python -m app.db.seed"`.
+  RUN_SEED = "false"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "20s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
