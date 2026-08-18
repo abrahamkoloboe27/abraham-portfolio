@@ -4,13 +4,14 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   CalendarDays,
-  Github,
   Globe,
   MapPin,
   Presentation,
   Users,
   Video,
 } from "lucide-react";
+
+import { GithubIcon } from "@/components/layout/BrandIcons";
 
 import { Markdown } from "@/components/ui/Markdown";
 import { Badge, ButtonLink, Card, Container } from "@/components/ui/primitives";
@@ -132,7 +133,7 @@ export default async function TalkPage({
               ) : null}
               {talk.repo_url ? (
                 <ButtonLink href={talk.repo_url} external variant="secondary">
-                  <Github className="size-4" aria-hidden />
+                  <GithubIcon className="size-4" aria-hidden />
                   {t("talks.repo")}
                 </ButtonLink>
               ) : null}

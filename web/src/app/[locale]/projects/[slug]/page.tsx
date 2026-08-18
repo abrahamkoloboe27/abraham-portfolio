@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink, Github, Newspaper } from "lucide-react";
+import { ArrowLeft, ExternalLink, Newspaper } from "lucide-react";
+
+import { GithubIcon } from "@/components/layout/BrandIcons";
 
 import { PageTracker } from "@/components/PageTracker";
 import { Markdown } from "@/components/ui/Markdown";
@@ -109,7 +111,7 @@ export default async function ProjectPage({
             <div className="mt-6 flex flex-wrap gap-3">
               {project.repo_url ? (
                 <ButtonLink href={project.repo_url} external variant="secondary">
-                  <Github className="size-4" aria-hidden />
+                  <GithubIcon className="size-4" aria-hidden />
                   {t("projects.code")}
                 </ButtonLink>
               ) : null}
