@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # ------------------------------------------------------------------ build
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 # Vite inlines VITE_* at build time.
