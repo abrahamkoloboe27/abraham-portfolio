@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 
 from app import schemas
-from app.api.deps import DbSession, RequireAdmin, RequireEditor, RequireViewer
+from app.api.deps import DbSession, RequireAdmin, RequireEditor, RequireViewer, save_and_refresh
 from app.models.community import Playlist, Talk
 from app.models.content import Post, Project
 from app.models.enums import AuditAction, ContentStatus
@@ -155,7 +155,7 @@ async def get_settings(db: DbSession, _: RequireViewer) -> Any:
     if row is None:
         row = SiteSettings()
         db.add(row)
-        await db.flush()
+        return await save_and_refresh(db, row)
     return row
 
 
@@ -172,7 +172,7 @@ async def update_settings(
     data = payload.model_dump(exclude_unset=True)
     for key, value in data.items():
         setattr(row, key, value)
-    await db.flush()
+    await save_and_refresh(db, row)
     await audit.record(
         db,
         action=AuditAction.UPDATE,

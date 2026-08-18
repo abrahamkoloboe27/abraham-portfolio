@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from sqlalchemy import func, select
 
 from app import schemas
-from app.api.deps import CurrentUser, DbSession, RequireAdmin, RequireOwner
+from app.api.deps import CurrentUser, DbSession, RequireAdmin, RequireOwner, save_and_refresh
 from app.core.config import settings
 from app.core.security import create_token, decode_token, hash_password, hash_token
 from app.models.enums import ROLE_LEVEL, AuditAction, UserRole
@@ -77,7 +77,7 @@ async def create_user(
         locale=payload.locale,
     )
     db.add(user)
-    await db.flush()
+    await save_and_refresh(db, user)
     await audit.record(
         db,
         action=AuditAction.CREATE,
@@ -115,7 +115,7 @@ async def update_user(
 
     for key, value in data.items():
         setattr(target, key, value)
-    await db.flush()
+    await save_and_refresh(db, target)
     await audit.record(
         db,
         action=AuditAction.UPDATE,
@@ -205,7 +205,7 @@ async def create_invitation(
         invited_by_id=actor.id,
     )
     db.add(invitation)
-    await db.flush()
+    await save_and_refresh(db, invitation)
 
     invite_url = f"{settings.ADMIN_SITE_URL.rstrip('/')}/accept-invite?token={raw_token}"
     background.add_task(send_invitation_email, email, invite_url, actor.full_name, payload.role)

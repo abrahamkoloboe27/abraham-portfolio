@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from sqlalchemy import select
 
 from app import schemas
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, save_and_refresh
 from app.core.config import settings
 from app.core.security import (
     create_access_token,
@@ -142,8 +142,7 @@ async def update_me(payload: schemas.UserUpdate, db: DbSession, user: CurrentUse
     data.pop("is_active", None)
     for key, value in data.items():
         setattr(user, key, value)
-    await db.flush()
-    return user
+    return await save_and_refresh(db, user)
 
 
 @router.post("/me/password", response_model=schemas.Message, summary="Changer son mot de passe")

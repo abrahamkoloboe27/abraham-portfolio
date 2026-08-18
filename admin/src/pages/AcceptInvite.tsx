@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button, Input, LoadingBlock, Panel } from "@/components/ui";
@@ -10,39 +11,47 @@ export function AcceptInvite() {
   const navigate = useNavigate();
   const token = params.get("token") ?? "";
 
-  const [invitation, setInvitation] = useState<Invitation | null>(null);
-  const [checking, setChecking] = useState(true);
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!token) {
-      setError("Lien d'invitation incomplet.");
-      setChecking(false);
-      return;
-    }
-    http
-      .public<Invitation>(
+  // A query rather than an effect: the token check is a fetch, and this keeps
+  // loading/error state out of render-triggered setState.
+  const {
+    data: invitation,
+    isPending,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["invitation", token],
+    queryFn: () =>
+      http.public<Invitation>(
         `/admin/team/invitations/verify?token=${encodeURIComponent(token)}`,
         undefined,
         "GET",
-      )
-      .then(setInvitation)
-      .catch((caught) =>
-        setError(caught instanceof ApiError ? caught.message : "Invitation invalide."),
-      )
-      .finally(() => setChecking(false));
-  }, [token]);
+      ),
+    enabled: Boolean(token),
+    retry: false,
+  });
+
+  const checking = Boolean(token) && isPending;
+  const error =
+    formError ??
+    (!token
+      ? "Lien d'invitation incomplet."
+      : queryError
+        ? queryError instanceof ApiError
+          ? queryError.message
+          : "Invitation invalide."
+        : null);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (password.length < 10) {
-      setError("Le mot de passe doit contenir au moins 10 caractères.");
+      setFormError("Le mot de passe doit contenir au moins 10 caractères.");
       return;
     }
-    setError(null);
+    setFormError(null);
     setLoading(true);
     try {
       const pair = await http.public<TokenPair>("/admin/team/invitations/accept", {
@@ -54,7 +63,7 @@ export function AcceptInvite() {
       // Full reload so the auth provider picks up the fresh session cleanly.
       window.location.assign("/");
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : "Activation impossible.");
+      setFormError(caught instanceof ApiError ? caught.message : "Activation impossible.");
       setLoading(false);
     }
   }

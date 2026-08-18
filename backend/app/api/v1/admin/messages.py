@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 
 from app import schemas
-from app.api.deps import DbSession, RequireEditor, RequireViewer
+from app.api.deps import DbSession, RequireEditor, RequireViewer, save_and_refresh
 from app.models.media import ContactMessage
 from app.schemas.common import Page
 
@@ -88,8 +88,7 @@ async def update_message(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Message introuvable")
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(message, key, value)
-    await db.flush()
-    return message
+    return await save_and_refresh(db, message)
 
 
 @router.delete("/{message_id}", response_model=schemas.Message, summary="Supprimer un message")

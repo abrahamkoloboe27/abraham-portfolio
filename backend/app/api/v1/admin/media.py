@@ -9,7 +9,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Query, Request, Upload
 from sqlalchemy import func, select
 
 from app import schemas
-from app.api.deps import DbSession, RequireEditor, RequireViewer
+from app.api.deps import DbSession, RequireEditor, RequireViewer, save_and_refresh
 from app.core.config import settings
 from app.models.enums import AuditAction, MediaFolder
 from app.models.media import MediaAsset
@@ -116,7 +116,7 @@ async def upload_media(
         uploaded_by_id=user.id,
     )
     db.add(asset)
-    await db.flush()
+    await save_and_refresh(db, asset)
     await audit.record(
         db,
         action=AuditAction.UPLOAD,
@@ -141,8 +141,7 @@ async def update_media(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Média introuvable")
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(asset, key, value)
-    await db.flush()
-    return asset
+    return await save_and_refresh(db, asset)
 
 
 @router.delete("/{asset_id}", response_model=schemas.Message, summary="Supprimer un média")

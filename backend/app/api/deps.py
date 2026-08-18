@@ -103,6 +103,20 @@ def pagination(
 Pagination = Annotated[PaginationParams, Depends(pagination)]
 
 
+async def save_and_refresh[T](db: AsyncSession, obj: T) -> T:
+    """Flush, then reload the row before it is serialized.
+
+    Columns computed by the database (`created_at`, `updated_at` and their
+    `server_default` / `onupdate` clauses) are expired by the flush. Reading them
+    later — during response serialization — would emit a lazy SELECT outside the
+    async context and raise `MissingGreenlet`. Refreshing here keeps that IO
+    inside the request's async scope.
+    """
+    await db.flush()
+    await db.refresh(obj)
+    return obj
+
+
 async def unique_or_409(
     db: AsyncSession, model: type, field: str, value: str, exclude_id: uuid.UUID | None = None
 ) -> None:

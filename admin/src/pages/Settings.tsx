@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { BilingualInput, FieldShell, ImageField, JsonField, StringListEditor } from "@/components/fields";
 import { Button, ErrorState, Input, LoadingBlock, PageHeader, Panel, Switch } from "@/components/ui";
@@ -62,11 +62,11 @@ export function Settings() {
   const update = useUpdateSettings();
 
   const [tab, setTab] = useState<TabKey>("identity");
-  const [values, setValues] = useState<Record<string, unknown>>({});
+  // `null` means "untouched": the form then mirrors the server state directly,
+  // so no effect is needed to sync the two.
+  const [draft, setDraft] = useState<Record<string, unknown> | null>(null);
 
-  useEffect(() => {
-    if (data) setValues(data);
-  }, [data]);
+  const values = draft ?? data ?? {};
 
   if (isLoading) return <LoadingBlock />;
   if (isError || !data) {
@@ -74,13 +74,15 @@ export function Settings() {
   }
 
   function set(name: string, value: unknown) {
-    setValues((current) => ({ ...current, [name]: value }));
+    setDraft((current) => ({ ...(current ?? data ?? {}), [name]: value }));
   }
 
   async function save() {
     const payload = diffPayload(values, data ?? {});
     if (!Object.keys(payload).length) return;
     await update.mutateAsync(payload);
+    // Drop the draft so the form re-syncs with what the server actually stored.
+    setDraft(null);
   }
 
   const dirty = Object.keys(diffPayload(values, data)).length > 0;
