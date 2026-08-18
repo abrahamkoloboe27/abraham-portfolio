@@ -15,7 +15,7 @@ install: install-backend install-web install-admin ## Installe toutes les dépen
 
 .PHONY: install-backend
 install-backend: ## Crée le venv Python et installe le backend
-	cd backend && uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[dev]"
+	cd backend && uv venv --python 3.14 .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 
 .PHONY: install-web
 install-web: ## Installe les dépendances du site public

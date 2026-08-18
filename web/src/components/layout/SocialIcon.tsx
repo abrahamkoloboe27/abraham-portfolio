@@ -1,12 +1,21 @@
-import { Github, Globe, Linkedin, Mail, Phone, Twitter, Youtube } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Globe, Mail, Phone } from "lucide-react";
+import type { ComponentType } from "react";
 
-const ICONS: Record<string, LucideIcon> = {
-  github: Github,
-  linkedin: Linkedin,
-  youtube: Youtube,
-  twitter: Twitter,
-  x: Twitter,
+import {
+  GithubIcon,
+  LinkedinIcon,
+  XIcon,
+  YoutubeIcon,
+} from "@/components/layout/BrandIcons";
+
+type IconComponent = ComponentType<{ className?: string }>;
+
+const ICONS: Record<string, IconComponent> = {
+  github: GithubIcon,
+  linkedin: LinkedinIcon,
+  youtube: YoutubeIcon,
+  twitter: XIcon,
+  x: XIcon,
   mail: Mail,
   email: Mail,
   phone: Phone,
@@ -16,5 +25,5 @@ const ICONS: Record<string, LucideIcon> = {
 /** Falls back to a globe so a newly added platform never renders empty. */
 export function SocialIcon({ name, className }: { name?: string | null; className?: string }) {
   const Icon = ICONS[(name ?? "").toLowerCase()] ?? Globe;
-  return <Icon className={className} aria-hidden />;
+  return <Icon className={className} />;
 }

@@ -8,7 +8,7 @@ d'administration (CRUD complet, médias, partage d'accès, statistiques).
 
 | Rôle | Choix |
 | --- | --- |
-| Framework | FastAPI (Python 3.12) |
+| Framework | FastAPI (Python 3.14) |
 | ORM | SQLAlchemy 2.0 (async, `asyncpg`) |
 | Migrations | Alembic (driver sync `psycopg`) |
 | Base de données | PostgreSQL — Supabase / Neon / local |
@@ -18,7 +18,7 @@ d'administration (CRUD complet, médias, partage d'accès, statistiques).
 ## Démarrage local
 
 ```bash
-uv venv --python 3.12 .venv
+uv venv --python 3.14 .venv
 uv pip install --python .venv/bin/python -e ".[dev]"
 cp ../.env.example ../.env      # puis renseigner DATABASE_URL
 .venv/bin/alembic upgrade head

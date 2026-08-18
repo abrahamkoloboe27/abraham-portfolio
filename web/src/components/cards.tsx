@@ -4,11 +4,12 @@ import {
   CalendarDays,
   Clock,
   ExternalLink,
-  Github,
   MapPin,
   PlaySquare,
   Users,
 } from "lucide-react";
+
+import { GithubIcon } from "@/components/layout/BrandIcons";
 
 import { Badge, Card } from "@/components/ui/primitives";
 import { pick, translator } from "@/lib/i18n";
@@ -70,7 +71,7 @@ export function ProjectCard({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 transition-colors hover:text-[var(--color-ink)]"
           >
-            <Github className="size-3.5" aria-hidden />
+            <GithubIcon className="size-3.5" aria-hidden />
             {t("projects.code")}
           </a>
         ) : null}
