@@ -47,13 +47,15 @@ USER appuser
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -fsS http://localhost:8000/health || exit 1
+    CMD curl -fsS "http://localhost:${PORT:-8000}/health" || exit 1
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["gunicorn", "app.main:app", \
-     "--worker-class", "uvicorn.workers.UvicornWorker", \
-     "--workers", "2", \
-     "--bind", "0.0.0.0:8000", \
-     "--timeout", "60", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-"]
+# Forme shell volontaire : Render, Fly et Cloud Run imposent le port par la variable
+# PORT. `exec` garde gunicorn en PID 1 pour que les signaux d'arrêt lui parviennent.
+CMD ["sh", "-c", "exec gunicorn app.main:app \
+     --worker-class uvicorn.workers.UvicornWorker \
+     --workers ${WEB_CONCURRENCY:-2} \
+     --bind 0.0.0.0:${PORT:-8000} \
+     --timeout 60 \
+     --access-logfile - \
+     --error-logfile -"]
